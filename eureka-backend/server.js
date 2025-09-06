@@ -14,12 +14,24 @@ const pdfParse = require("pdf-parse");
 const Document = require("./models/Document");
 
 const app = express();
+const allowedOrigins = [
+  "https://eureka-1-ohq1.onrender.com", // your Render frontend
+  "http://localhost:5173",              // local dev
+];
+
 app.use(
   cors({
-    origin: "https://your-frontend-url.netlify.app", // Replace with deployed frontend URL
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
+
 
 app.use(express.json());
 
