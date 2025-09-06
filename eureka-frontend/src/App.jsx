@@ -3,6 +3,8 @@ import "./App.css";
 import UploadComponent from "./components/UploadComponent";
 import AdvancedSearch from "./components/AdvancedSearch";
 import SearchComponent from "./components/SearchComponent";
+import API from "./api";
+
 
 function App() {
   const [currentView, setCurrentView] = useState("upload");

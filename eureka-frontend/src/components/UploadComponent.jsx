@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import "./UploadComponent.css";
+import API from "../api";
+
 
 const UploadComponent = () => {
   const [file, setFile] = useState(null);

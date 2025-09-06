@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./SearchComponent.css";
+import API from "../api";
+
 
 const SearchComponent = () => {
   const [query, setQuery] = useState("");

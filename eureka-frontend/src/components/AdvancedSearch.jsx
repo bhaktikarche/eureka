@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./AdvancedSearch.css";
+import API from "../api";
 
 const AdvancedSearch = () => {
   const [query, setQuery] = useState("");
