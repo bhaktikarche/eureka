@@ -14,7 +14,13 @@ const pdfParse = require("pdf-parse");
 const Document = require("./models/Document");
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://your-frontend-url.netlify.app", // Replace with deployed frontend URL
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
 // Create uploads directory if it doesn't exist
