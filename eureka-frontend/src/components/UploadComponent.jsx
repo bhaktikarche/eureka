@@ -1,21 +1,22 @@
 // eureka-frontend/src/components/UploadComponent.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 import "./UploadComponent.css";
 
 const UploadComponent = () => {
   const [file, setFile] = useState(null);
   const [files, setFiles] = useState([]);
-  const [uploadStatus, setUploadStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Fetch uploaded files
   const fetchFiles = async () => {
     try {
       const res = await axios.get("http://localhost:5000/files");
       setFiles(res.data);
     } catch (err) {
       console.error("Error fetching files:", err);
-      setUploadStatus("Error fetching files");
+      toast.error("Error fetching files");
     }
   };
 
@@ -23,15 +24,15 @@ const UploadComponent = () => {
     fetchFiles();
   }, []);
 
+  // Handle file upload
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
-      setUploadStatus("Please select a file first");
+      toast.error("Please select a file first");
       return;
     }
 
     setLoading(true);
-    setUploadStatus("Uploading...");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -41,53 +42,67 @@ const UploadComponent = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFile(null);
-      setUploadStatus("File uploaded successfully!");
-      fetchFiles(); // Refresh the file list
+      toast.success("File uploaded successfully!");
+      fetchFiles();
     } catch (err) {
       console.error("Upload error:", err);
-      setUploadStatus("Upload failed: " + err.message);
+      toast.error("Upload failed: " + err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // Handle file selection
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      // Check file size (limit to 10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setUploadStatus("File size must be less than 10MB");
-        return;
-      }
-      
-      // Check file type (allow common document types)
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-        'application/rtf'
-      ];
-      
-      if (!allowedTypes.includes(selectedFile.type)) {
-        setUploadStatus("Please upload a document file (PDF, DOC, DOCX, TXT, RTF)");
-        return;
-      }
-      
-      setFile(selectedFile);
-      setUploadStatus(`Selected: ${selectedFile.name}`);
+    if (!selectedFile) return;
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+      "application/rtf",
+    ];
+
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast.error("Please upload a document file (PDF, DOC, DOCX, TXT, RTF)");
+      return;
+    }
+
+    setFile(selectedFile);
+    toast.success(`Selected: ${selectedFile.name}`);
+  };
+
+  // Handle file deletion
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this file?")) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/files/${id}`);
+      toast.success("File deleted successfully!");
+      fetchFiles();
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error("Failed to delete file: " + err.message);
     }
   };
 
   return (
     <div className="upload-container">
+      <Toaster position="top-right" reverseOrder={false} />
       <h2>📂 Eureka File Upload</h2>
-      
+
       <form onSubmit={handleUpload} className="upload-form">
         <div className="file-input-container">
-          <input 
-            type="file" 
-            onChange={handleFileChange} 
+          <input
+            type="file"
+            onChange={handleFileChange}
             className="file-input"
             id="fileInput"
           />
@@ -96,17 +111,15 @@ const UploadComponent = () => {
           </label>
           {file && <span className="file-name">{file.name}</span>}
         </div>
-        
-        <button 
-          type="submit" 
+
+        <button
+          type="submit"
           disabled={!file || loading}
           className="upload-button"
         >
           {loading ? "Uploading..." : "Upload"}
         </button>
       </form>
-
-      {uploadStatus && <div className="status-message">{uploadStatus}</div>}
 
       <div className="uploaded-files">
         <h3>Uploaded Files</h3>
@@ -116,17 +129,26 @@ const UploadComponent = () => {
           <ul className="file-list">
             {files.map((f) => (
               <li key={f._id} className="file-item">
-                <a 
-                  href={`http://localhost:5000/${f.path}`} 
-                  target="_blank" 
+                <a
+                  href={`http://localhost:5000/uploads/${f.filename}`}
+                  target="_blank"
                   rel="noreferrer"
                   className="file-link"
                 >
-                  {f.filename}
+                  {f.originalName}
                 </a>
                 <span className="file-date">
                   Uploaded: {new Date(f.uploadedAt).toLocaleDateString()}
                 </span>
+                <span className="file-size">
+                  Size: {(f.size / 1024).toFixed(2)} KB
+                </span>
+                <button
+                  onClick={() => handleDelete(f._id)}
+                  className="delete-button"
+                >
+                  ❌ Delete
+                </button>
               </li>
             ))}
           </ul>
