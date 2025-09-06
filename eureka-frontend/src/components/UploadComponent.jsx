@@ -12,7 +12,7 @@ const UploadComponent = () => {
   // Fetch uploaded files
   const fetchFiles = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/files");
+      const res = await axios.get("https://eureka-8173.onrender.com/files");
       setFiles(res.data);
     } catch (err) {
       console.error("Error fetching files:", err);
@@ -38,7 +38,7 @@ const UploadComponent = () => {
     formData.append("file", file);
 
     try {
-      await axios.post("http://localhost:5000/upload", formData, {
+      await axios.post("https://eureka-8173.onrender.com/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFile(null);
@@ -84,7 +84,7 @@ const UploadComponent = () => {
     if (!window.confirm("Are you sure you want to delete this file?")) return;
 
     try {
-      await axios.delete(`http://localhost:5000/files/${id}`);
+      await axios.delete(`https://eureka-8173.onrender.com/files/${id}`);
       toast.success("File deleted successfully!");
       fetchFiles();
     } catch (err) {
@@ -130,7 +130,7 @@ const UploadComponent = () => {
             {files.map((f) => (
               <li key={f._id} className="file-item">
                 <a
-                  href={`http://localhost:5000/uploads/${f.filename}`}
+                  href={`https://eureka-8173.onrender.com/${f.filename}`}
                   target="_blank"
                   rel="noreferrer"
                   className="file-link"

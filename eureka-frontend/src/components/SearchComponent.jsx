@@ -16,7 +16,7 @@ const SearchComponent = () => {
     setSearching(true);
     setHasSearched(true);
     try {
-      const response = await axios.get(`http://localhost:5000/search?q=${encodeURIComponent(query)}`);
+      const response = await axios.get(`https://eureka-8173.onrender.com/search?q=${encodeURIComponent(query)}`);
       setResults(response.data);
     } catch (error) {
       console.error("Search error:", error);
@@ -100,7 +100,7 @@ const SearchComponent = () => {
                     )}
                     
                     <a 
-                      href={`http://localhost:5000/uploads/${doc.filename}`} 
+                      href={`https://eureka-8173.onrender.com/${doc.filename}`} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="view-link"

@@ -25,7 +25,7 @@ const AdvancedSearch = () => {
       if (donorFilter) params.append("donor", donorFilter);
 
       const response = await axios.get(
-        `http://localhost:5000/search/advanced?${params}`
+        `https://eureka-8173.onrender.com/search/advanced?${params}`
       );
       setResults(response.data);
     } catch (error) {
@@ -39,7 +39,7 @@ const AdvancedSearch = () => {
   const loadAnalytics = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:5000/analytics/trends"
+        "https://eureka-8173.onrender.com/analytics/trends"
       );
       setAnalytics(response.data);
       setShowAnalytics(true);
@@ -224,7 +224,7 @@ const AdvancedSearch = () => {
                 )}
 
                 <a
-                  href={`http://localhost:5000/uploads/${doc.filename}`}
+                  href={`https://eureka-8173.onrender.com/uploads/${doc.filename}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-link"
