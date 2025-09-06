@@ -52,9 +52,7 @@ const AdvancedSearch = () => {
 
       // Update URL query params
       setSearchParams(
-        Object.fromEntries(
-          Object.entries(params).filter(([k, v]) => v !== "")
-        )
+        Object.fromEntries(Object.entries(params).filter(([k, v]) => v !== ""))
       );
 
       const response = await axios.get(`${API_BASE}/search/advanced`, {
@@ -175,18 +173,10 @@ const AdvancedSearch = () => {
         </div>
 
         <div className="form-buttons">
-          <button
-            type="submit"
-            disabled={searching}
-            className="search-button"
-          >
+          <button type="submit" disabled={searching} className="search-button">
             {searching ? "Searching..." : "Advanced Search"}
           </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            className="reset-button"
-          >
+          <button type="button" onClick={handleReset} className="reset-button">
             🔙 Reset / Go Back
           </button>
         </div>
@@ -214,7 +204,9 @@ const AdvancedSearch = () => {
               <ul>
                 {analytics.yearlyStats.map((year, index) => (
                   <li key={index}>
-                    <span className="year">{year._id.replace("year-", "")}</span>
+                    <span className="year">
+                      {year._id.replace("year-", "")}
+                    </span>
                     <span className="year-count">({year.count} files)</span>
                   </li>
                 ))}

@@ -10,13 +10,14 @@ const { exec } = require("child_process");
 const util = require("util");
 const execPromise = util.promisify(exec);
 const pdfParse = require("pdf-parse");
+const pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
 
 const Document = require("./models/Document");
 
 const app = express();
 const allowedOrigins = [
   "https://eureka-1-ohq1.onrender.com", // your Render frontend
-  "http://localhost:5173",              // local dev
+  "http://localhost:5173", // local dev
 ];
 
 app.use(
@@ -31,7 +32,6 @@ app.use(
     credentials: true,
   })
 );
-
 
 app.use(express.json());
 
@@ -102,35 +102,40 @@ const upload = multer({
 });
 
 // Text extraction using XPDF pdftotext
-// REPLACE your current extractTextFromFile function with this debug version
 const extractTextFromFile = async (filePath, mimetype) => {
   console.log(`\n=== Starting text extraction ===`);
   console.log(`File: ${filePath}`);
   console.log(`Type: ${mimetype}`);
-  
+
   try {
-    if (mimetype === 'application/pdf') {
-      console.log('Processing PDF file...');
-      
+    if (mimetype === "application/pdf") {
+      console.log("Processing PDF file...");
+
       // Try pdf-parse first (more reliable)
       try {
-        const pdf = require('pdf-parse');
+        const pdf = require("pdf-parse");
         const dataBuffer = fs.readFileSync(filePath);
         const data = await pdf(dataBuffer);
         console.log(`pdf-parse extracted ${data.text.length} characters`);
-        
+
         if (data.text.length > 100) {
           return data.text;
         }
       } catch (pdfParseError) {
-        console.error("pdf-parse failed, trying pdftotext:", pdfParseError.message);
+        console.error(
+          "pdf-parse failed, trying pdftotext:",
+          pdfParseError.message
+        );
       }
-      
+
       // Fallback to pdftotext if pdf-parse fails
       try {
-        const { stdout, stderr } = await execPromise(`pdftotext "${filePath}" -`, { timeout: 30000 });
+        const { stdout, stderr } = await execPromise(
+          `pdftotext "${filePath}" -`,
+          { timeout: 30000 }
+        );
         if (stderr) console.warn("pdftotext stderr:", stderr);
-        
+
         const extractedText = stdout || "";
         console.log(`pdftotext extracted ${extractedText.length} characters`);
         return extractedText;
@@ -138,19 +143,19 @@ const extractTextFromFile = async (filePath, mimetype) => {
         console.error("pdftotext also failed:", execError.message);
         return "";
       }
-    } 
-    else if (mimetype === 'text/plain') {
-      console.log('Processing text file...');
+    } else if (mimetype === "text/plain") {
+      console.log("Processing text file...");
       try {
-        const text = fs.readFileSync(filePath, 'utf8');
-        console.log(`Text file extraction successful, got ${text.length} characters`);
+        const text = fs.readFileSync(filePath, "utf8");
+        console.log(
+          `Text file extraction successful, got ${text.length} characters`
+        );
         return text;
       } catch (readError) {
         console.error("Text file read error:", readError.message);
         return "";
       }
-    }
-    else {
+    } else {
       console.log(`Text extraction not implemented for: ${mimetype}`);
       return "";
     }
@@ -163,7 +168,6 @@ const extractTextFromFile = async (filePath, mimetype) => {
 };
 
 // Helper function to generate tags from filename
-// Helper function to generate tags from filename
 function generateTagsFromFilename(filename) {
   const tags = [];
   const currentYear = new Date().getFullYear();
@@ -175,13 +179,82 @@ function generateTagsFromFilename(filename) {
 
   // -------- Program Area Keywords --------
   const programKeywords = [
-    "education","curriculum","school","students","teachers","literacy","training","skills","e-learning","vocational","higher-education",
-    "health","healthcare","public-health","malaria","hiv","vaccine","nutrition","maternal","child","disease","mental-health","clinic","hospital","medicine","pandemic",
-    "research","study","clinical","trial","experiment","innovation","technology","ai","data","science","development","startup","entrepreneurship",
-    "policy","legislation","regulation","governance","law","compliance","strategy","advocacy","program",
-    "grant","funding","investment","budget","finance","philanthropy","awards","scholarships",
-    "environment","climate","energy","sustainability","conservation","water","agriculture","forestry","renewable","green",
-    "community","social","youth","women","empowerment","inclusion","equality","volunteer","ngo","nonprofit"
+    "education",
+    "curriculum",
+    "school",
+    "students",
+    "teachers",
+    "literacy",
+    "training",
+    "skills",
+    "e-learning",
+    "vocational",
+    "higher-education",
+    "health",
+    "healthcare",
+    "public-health",
+    "malaria",
+    "hiv",
+    "vaccine",
+    "nutrition",
+    "maternal",
+    "child",
+    "disease",
+    "mental-health",
+    "clinic",
+    "hospital",
+    "medicine",
+    "pandemic",
+    "research",
+    "study",
+    "clinical",
+    "trial",
+    "experiment",
+    "innovation",
+    "technology",
+    "ai",
+    "data",
+    "science",
+    "development",
+    "startup",
+    "entrepreneurship",
+    "policy",
+    "legislation",
+    "regulation",
+    "governance",
+    "law",
+    "compliance",
+    "strategy",
+    "advocacy",
+    "program",
+    "grant",
+    "funding",
+    "investment",
+    "budget",
+    "finance",
+    "philanthropy",
+    "awards",
+    "scholarships",
+    "environment",
+    "climate",
+    "energy",
+    "sustainability",
+    "conservation",
+    "water",
+    "agriculture",
+    "forestry",
+    "renewable",
+    "green",
+    "community",
+    "social",
+    "youth",
+    "women",
+    "empowerment",
+    "inclusion",
+    "equality",
+    "volunteer",
+    "ngo",
+    "nonprofit",
   ];
 
   programKeywords.forEach((keyword) => {
@@ -192,8 +265,18 @@ function generateTagsFromFilename(filename) {
 
   // -------- Donor / Organization Keywords --------
   const donorKeywords = [
-    "gates", "foundation", "who", "worldbank", "unicef", "undp", 
-    "usaid", "dfid", "nih", "wellcome", "rockefeller", "ford"
+    "gates",
+    "foundation",
+    "who",
+    "worldbank",
+    "unicef",
+    "undp",
+    "usaid",
+    "dfid",
+    "nih",
+    "wellcome",
+    "rockefeller",
+    "ford",
   ];
 
   donorKeywords.forEach((donor) => {
@@ -205,7 +288,6 @@ function generateTagsFromFilename(filename) {
   // Remove duplicates just in case
   return [...new Set(tags)];
 }
-
 
 // Routes
 app.post("/upload", upload.single("file"), async (req, res) => {
@@ -340,10 +422,7 @@ app.get("/search/advanced", async (req, res) => {
     // Donor search
     if (donor) {
       const donorRegex = new RegExp(donor, "i");
-      query.$or = [
-        { originalName: donorRegex },
-        { tags: donorRegex }
-      ];
+      query.$or = [{ originalName: donorRegex }, { tags: donorRegex }];
     }
 
     const documents = await Document.find(query).sort({ uploadedAt: -1 });
@@ -654,25 +733,24 @@ app.get("/test-pdftotext", async (req, res) => {
   }
 });
 
-
 // Simple text summarization function
 const generateSummary = (text, maxLength = 500) => {
   if (!text || text.length === 0) {
     return "No text available for summarization.";
   }
-  
+
   // Simple algorithm: take first few sentences until we reach maxLength
-  let summary = '';
+  let summary = "";
   const sentences = text.split(/[.!?]+/);
-  
+
   for (const sentence of sentences) {
     if (summary.length + sentence.length > maxLength) {
       break;
     }
-    summary += sentence + '. ';
+    summary += sentence + ". ";
   }
-  
-  return summary.trim() || text.substring(0, maxLength) + '...';
+
+  return summary.trim() || text.substring(0, maxLength) + "...";
 };
 
 // Document summary endpoint
@@ -680,44 +758,45 @@ app.get("/document/:id/summary", async (req, res) => {
   try {
     const { id } = req.params;
     const { length } = req.query; // Optional length parameter
-    
+
     const document = await Document.findById(id);
-    
+
     if (!document) {
       return res.status(404).json({ error: "Document not found" });
     }
-    
-    if (!document.extractedText || document.extractedText.trim() === '') {
-      return res.status(400).json({ 
+
+    if (!document.extractedText || document.extractedText.trim() === "") {
+      return res.status(400).json({
         error: "No text content available for this document",
-        suggestion: "Re-upload the document to extract text" 
+        suggestion: "Re-upload the document to extract text",
       });
     }
-    
+
     const maxLength = length ? parseInt(length) : 500;
     const summary = generateSummary(document.extractedText, maxLength);
-    
+
     res.json({
       success: true,
       document: {
         id: document._id,
         filename: document.originalName,
         uploadDate: document.uploadedAt,
-        fileType: document.mimetype
+        fileType: document.mimetype,
       },
       summary: summary,
       statistics: {
         originalLength: document.extractedText.length,
         summaryLength: summary.length,
-        compressionRatio: Math.round((summary.length / document.extractedText.length) * 100)
-      }
+        compressionRatio: Math.round(
+          (summary.length / document.extractedText.length) * 100
+        ),
+      },
     });
-    
   } catch (error) {
     console.error("Summary error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Failed to generate summary",
-      message: error.message 
+      message: error.message,
     });
   }
 });
@@ -726,72 +805,73 @@ app.get("/document/:id/summary", async (req, res) => {
 app.get("/document/:id/summary/advanced", async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      length = 500, 
-      type = 'intro', // 'intro', 'keypoints', 'overview'
-      includeStats = true 
+    const {
+      length = 500,
+      type = "intro", // 'intro', 'keypoints', 'overview'
+      includeStats = true,
     } = req.query;
-    
+
     const document = await Document.findById(id);
-    
+
     if (!document || !document.extractedText) {
       return res.status(404).json({ error: "Document or text not found" });
     }
-    
+
     let summary;
     const text = document.extractedText;
-    
+
     switch (type) {
-      case 'keypoints':
+      case "keypoints":
         // Extract what looks like key points (lines with bullets, numbers, etc.)
-        const keyPoints = text.split('\n')
-          .filter(line => 
-            line.match(/^[•\-*\d+\.]/) || 
-            line.match(/\b(important|key|summary|conclusion)\b/i) ||
-            line.length > 50 && line.length < 200
+        const keyPoints = text
+          .split("\n")
+          .filter(
+            (line) =>
+              line.match(/^[•\-*\d+\.]/) ||
+              line.match(/\b(important|key|summary|conclusion)\b/i) ||
+              (line.length > 50 && line.length < 200)
           )
           .slice(0, 5);
-        summary = keyPoints.join('\n') || generateSummary(text, length);
+        summary = keyPoints.join("\n") || generateSummary(text, length);
         break;
-        
-      case 'overview':
+
+      case "overview":
         // Try to get beginning, middle, and end snippets
         const third = Math.floor(text.length / 3);
         summary = [
           text.substring(0, Math.min(200, third)),
           text.substring(third, third + 200),
-          text.substring(text.length - 200)
-        ].join('...\n\n...');
+          text.substring(text.length - 200),
+        ].join("...\n\n...");
         break;
-        
+
       default: // 'intro'
         summary = generateSummary(text, length);
     }
-    
+
     const response = {
       success: true,
       document: {
         id: document._id,
         filename: document.originalName,
-        tags: document.tags
+        tags: document.tags,
       },
       summary: summary,
       options: {
         type: type,
-        requestedLength: length
-      }
+        requestedLength: length,
+      },
     };
-    
+
     if (includeStats) {
       response.statistics = {
         originalLength: text.length,
         summaryLength: summary.length,
-        compressionRatio: Math.round((summary.length / text.length) * 100)
+        compressionRatio: Math.round((summary.length / text.length) * 100),
       };
     }
-    
+
     res.json(response);
-    
   } catch (error) {
     console.error("Advanced summary error:", error);
     res.status(500).json({ error: "Failed to generate advanced summary" });
@@ -802,32 +882,109 @@ app.get("/document/:id/summary/advanced", async (req, res) => {
 app.get("/summaries", async (req, res) => {
   try {
     const { ids, length = 300 } = req.query;
-    
+
     if (!ids) {
       return res.status(400).json({ error: "Document IDs required" });
     }
-    
-    const idArray = Array.isArray(ids) ? ids : ids.split(',');
+
+    const idArray = Array.isArray(ids) ? ids : ids.split(",");
     const documents = await Document.find({ _id: { $in: idArray } });
-    
-    const summaries = documents.map(doc => ({
+
+    const summaries = documents.map((doc) => ({
       id: doc._id,
       filename: doc.originalName,
-      summary: generateSummary(doc.extractedText || '', length),
-      hasContent: !!doc.extractedText && doc.extractedText.length > 0
+      summary: generateSummary(doc.extractedText || "", length),
+      hasContent: !!doc.extractedText && doc.extractedText.length > 0,
     }));
-    
+
     res.json({
       success: true,
       count: summaries.length,
-      summaries: summaries
+      summaries: summaries,
     });
-    
   } catch (error) {
     console.error("Bulk summaries error:", error);
     res.status(500).json({ error: "Failed to generate bulk summaries" });
   }
 });
+
+const extractPageText = async (filePath, pageNumber) => {
+  try {
+    console.log(`Extracting page ${pageNumber} from: ${filePath}`);
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error("File not found");
+    }
+
+    const data = new Uint8Array(fs.readFileSync(filePath));
+    const pdfDocument = await pdfjsLib.getDocument({ data }).promise;
+
+    if (pageNumber < 1 || pageNumber > pdfDocument.numPages) {
+      throw new Error(
+        `Invalid page number. Document has ${pdfDocument.numPages} pages.`
+      );
+    }
+
+    const page = await pdfDocument.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+
+    // Combine all text items
+    const pageText = textContent.items.map((item) => item.str).join(" ");
+
+    return {
+      text: pageText,
+      totalPages: pdfDocument.numPages,
+    };
+  } catch (error) {
+    console.error("Page extraction error:", error);
+    throw error;
+  }
+};
+
+// Get total pages of a PDF
+app.get("/document/:id/pages", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doc = await Document.findById(id);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+
+    if (doc.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Not a PDF document" });
+    }
+
+    const data = new Uint8Array(fs.readFileSync(doc.path));
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    res.json({ totalPages: pdf.numPages });
+  } catch (err) {
+    console.error("Error fetching total pages:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get text content of a specific page
+app.get("/document/:id/page/:pageNumber", async (req, res) => {
+  try {
+    const { id, pageNumber } = req.params;
+    const doc = await Document.findById(id);
+    if (!doc) return res.status(404).json({ error: "Document not found" });
+
+    if (doc.mimetype !== "application/pdf") {
+      return res.status(400).json({ error: "Not a PDF document" });
+    }
+
+    const data = new Uint8Array(fs.readFileSync(doc.path));
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
+    const page = await pdf.getPage(parseInt(pageNumber));
+    const content = await page.getTextContent();
+
+    const pageText = content.items.map((item) => item.str).join(" ");
+    res.json({ content: pageText });
+  } catch (err) {
+    console.error("Error fetching page:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

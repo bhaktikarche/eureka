@@ -42,9 +42,13 @@ const SearchComponent = () => {
     } catch (error) {
       console.error("Search error:", error);
       if (error.response?.data?.error?.includes("text index")) {
-        alert("Search index is still being created. Please wait a moment and try again.");
+        alert(
+          "Search index is still being created. Please wait a moment and try again."
+        );
       } else {
-        alert("Search failed: " + (error.response?.data?.error || error.message));
+        alert(
+          "Search failed: " + (error.response?.data?.error || error.message)
+        );
       }
     } finally {
       setSearching(false);
@@ -54,7 +58,10 @@ const SearchComponent = () => {
   const highlightText = (text, query) => {
     if (!text || !query) return text;
 
-    const terms = query.toLowerCase().split(" ").filter((term) => term.length > 2);
+    const terms = query
+      .toLowerCase()
+      .split(" ")
+      .filter((term) => term.length > 2);
     let highlighted = text;
 
     terms.forEach((term) => {
@@ -100,7 +107,10 @@ const SearchComponent = () => {
             {results.length === 0 ? (
               <div className="no-results">
                 <p>No documents found for "{query}".</p>
-                <p>Try different keywords or check if documents have been uploaded.</p>
+                <p>
+                  Try different keywords or check if documents have been
+                  uploaded.
+                </p>
               </div>
             ) : (
               <ul className="results-list">
@@ -111,7 +121,8 @@ const SearchComponent = () => {
                       <span>Size: {(doc.size / 1024).toFixed(2)} KB</span>
                       <span>Type: {doc.mimetype}</span>
                       <span>
-                        Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                        Uploaded:{" "}
+                        {new Date(doc.uploadedAt).toLocaleDateString()}
                       </span>
                     </div>
 
