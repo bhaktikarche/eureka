@@ -1,8 +1,8 @@
 // components/AdvancedSearch.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import "./AdvancedSearch.css";
-import API from "../api";
 
 const AdvancedSearch = () => {
   const [query, setQuery] = useState("");
@@ -14,20 +14,52 @@ const AdvancedSearch = () => {
   const [analytics, setAnalytics] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  const handleAdvancedSearch = async (e) => {
-    e.preventDefault();
+  const API_BASE = import.meta.env.VITE_API_URL;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Load search from URL on mount
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    const year = searchParams.get("year") || "";
+    const program = searchParams.get("programArea") || "";
+    const donor = searchParams.get("donor") || "";
+
+    setQuery(q);
+    setYearFilter(year);
+    setProgramFilter(program);
+    setDonorFilter(donor);
+
+    if (q || year || program || donor) {
+      handleAdvancedSearch(null, { q, year, programArea: program, donor });
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  // Advanced search handler
+  const handleAdvancedSearch = async (e, prefilledParams = null) => {
+    if (e) e.preventDefault();
     setSearching(true);
 
     try {
-      const params = new URLSearchParams();
-      if (query) params.append("q", query);
-      if (yearFilter) params.append("year", yearFilter);
-      if (programFilter) params.append("programArea", programFilter);
-      if (donorFilter) params.append("donor", donorFilter);
+      const params = prefilledParams || {
+        q: query,
+        year: yearFilter,
+        programArea: programFilter,
+        donor: donorFilter,
+      };
 
-      const response = await axios.get(
-        `https://eureka-8173.onrender.com/search/advanced?${params}`
+      // Update URL query params
+      setSearchParams(
+        Object.fromEntries(
+          Object.entries(params).filter(([k, v]) => v !== "")
+        )
       );
+
+      const response = await axios.get(`${API_BASE}/search/advanced`, {
+        params,
+      });
       setResults(response.data);
     } catch (error) {
       console.error("Advanced search error:", error);
@@ -37,11 +69,10 @@ const AdvancedSearch = () => {
     }
   };
 
+  // Load analytics/trends
   const loadAnalytics = async () => {
     try {
-      const response = await axios.get(
-        "https://eureka-8173.onrender.com/analytics/trends"
-      );
+      const response = await axios.get(`${API_BASE}/analytics/trends`);
       setAnalytics(response.data);
       setShowAnalytics(true);
     } catch (error) {
@@ -53,6 +84,7 @@ const AdvancedSearch = () => {
     }
   };
 
+  // Highlight search terms in text
   const highlightText = (text, query) => {
     if (!text || !query) return text;
 
@@ -68,6 +100,17 @@ const AdvancedSearch = () => {
     });
 
     return { __html: highlighted };
+  };
+
+  // Reset / Go Back
+  const handleReset = () => {
+    setQuery("");
+    setYearFilter("");
+    setProgramFilter("");
+    setDonorFilter("");
+    setResults([]);
+    setSearchParams({});
+    navigate("/search");
   };
 
   return (
@@ -131,9 +174,22 @@ const AdvancedSearch = () => {
           </div>
         </div>
 
-        <button type="submit" disabled={searching} className="search-button">
-          {searching ? "Searching..." : "Advanced Search"}
-        </button>
+        <div className="form-buttons">
+          <button
+            type="submit"
+            disabled={searching}
+            className="search-button"
+          >
+            {searching ? "Searching..." : "Advanced Search"}
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            className="reset-button"
+          >
+            🔙 Reset / Go Back
+          </button>
+        </div>
       </form>
 
       {showAnalytics && analytics && (
@@ -158,9 +214,7 @@ const AdvancedSearch = () => {
               <ul>
                 {analytics.yearlyStats.map((year, index) => (
                   <li key={index}>
-                    <span className="year">
-                      {year._id.replace("year-", "")}
-                    </span>
+                    <span className="year">{year._id.replace("year-", "")}</span>
                     <span className="year-count">({year.count} files)</span>
                   </li>
                 ))}
@@ -225,7 +279,7 @@ const AdvancedSearch = () => {
                 )}
 
                 <a
-                  href={`https://eureka-8173.onrender.com/uploads/${doc.filename}`}
+                  href={`${API_BASE}/uploads/${doc.filename}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-link"

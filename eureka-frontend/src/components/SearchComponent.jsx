@@ -1,9 +1,8 @@
 // components/SearchComponent.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import "./SearchComponent.css";
-import API from "../api";
-
 
 const SearchComponent = () => {
   const [query, setQuery] = useState("");
@@ -11,18 +10,38 @@ const SearchComponent = () => {
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const API_BASE = import.meta.env.VITE_API_URL;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // Load query from URL on mount
+  useEffect(() => {
+    const q = searchParams.get("q") || "";
+    if (q) {
+      setQuery(q);
+      handleSearch(null, q);
+    }
+    // eslint-disable-next-line
+  }, []);
+
+  const handleSearch = async (e, prefilledQuery = null) => {
+    if (e) e.preventDefault();
+    const searchQuery = prefilledQuery !== null ? prefilledQuery : query.trim();
+    if (!searchQuery) return;
 
     setSearching(true);
     setHasSearched(true);
+
     try {
-      const response = await axios.get(`https://eureka-8173.onrender.com/search?q=${encodeURIComponent(query)}`);
+      setSearchParams({ q: searchQuery });
+
+      const response = await axios.get(`${API_BASE}/search`, {
+        params: { q: searchQuery },
+      });
       setResults(response.data);
     } catch (error) {
       console.error("Search error:", error);
-      if (error.response?.data?.error?.includes('text index')) {
+      if (error.response?.data?.error?.includes("text index")) {
         alert("Search index is still being created. Please wait a moment and try again.");
       } else {
         alert("Search failed: " + (error.response?.data?.error || error.message));
@@ -34,32 +53,43 @@ const SearchComponent = () => {
 
   const highlightText = (text, query) => {
     if (!text || !query) return text;
-    
-    const terms = query.toLowerCase().split(' ').filter(term => term.length > 2);
+
+    const terms = query.toLowerCase().split(" ").filter((term) => term.length > 2);
     let highlighted = text;
-    
-    terms.forEach(term => {
-      const regex = new RegExp(`(${term})`, 'gi');
-      highlighted = highlighted.replace(regex, '<mark>$1</mark>');
+
+    terms.forEach((term) => {
+      const regex = new RegExp(`(${term})`, "gi");
+      highlighted = highlighted.replace(regex, "<mark>$1</mark>");
     });
-    
+
     return { __html: highlighted };
+  };
+
+  const handleReset = () => {
+    setQuery("");
+    setResults([]);
+    setHasSearched(false);
+    setSearchParams({});
+    navigate("/upload");
   };
 
   return (
     <div className="search-container">
       <h2>🔍 Search Documents</h2>
-      
+
       <form onSubmit={handleSearch} className="search-form">
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search across all documents (try keywords from your documents)..."
+          placeholder="Search across all documents..."
           className="search-input"
         />
         <button type="submit" disabled={searching} className="search-button">
           {searching ? "Searching..." : "Search"}
+        </button>
+        <button type="button" onClick={handleReset} className="reset-button">
+          🔙 Reset / Clear
         </button>
       </form>
 
@@ -80,30 +110,34 @@ const SearchComponent = () => {
                     <div className="document-meta">
                       <span>Size: {(doc.size / 1024).toFixed(2)} KB</span>
                       <span>Type: {doc.mimetype}</span>
-                      <span>Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                      <span>
+                        Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    
+
                     {doc.extractedText && (
-                      <div 
+                      <div
                         className="text-preview"
                         dangerouslySetInnerHTML={highlightText(
-                          doc.extractedText.substring(0, 200) + '...', 
+                          doc.extractedText.substring(0, 200) + "...",
                           query
                         )}
                       />
                     )}
-                    
+
                     {doc.tags && doc.tags.length > 0 && (
                       <div className="tags">
                         {doc.tags.map((tag, index) => (
-                          <span key={index} className="tag">{tag}</span>
+                          <span key={index} className="tag">
+                            {tag}
+                          </span>
                         ))}
                       </div>
                     )}
-                    
-                    <a 
-                      href={`https://eureka-8173.onrender.com/${doc.filename}`} 
-                      target="_blank" 
+
+                    <a
+                      href={`${API_BASE}/${doc.filename}`}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="view-link"
                     >

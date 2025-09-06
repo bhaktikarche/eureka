@@ -104,69 +104,108 @@ const upload = multer({
 // Text extraction using XPDF pdftotext
 // REPLACE your current extractTextFromFile function with this debug version
 const extractTextFromFile = async (filePath, mimetype) => {
+  console.log(`\n=== Starting text extraction ===`);
+  console.log(`File: ${filePath}`);
+  console.log(`Type: ${mimetype}`);
+  
   try {
-    if (mimetype === "application/pdf") {
-      console.log("Processing PDF file with pdf-parse...");
-      const dataBuffer = fs.readFileSync(filePath);
-      const data = await pdfParse(dataBuffer);
-      console.log(`pdf-parse extracted ${data.text.length} characters`);
-      return data.text;
-    } else if (mimetype === "text/plain") {
-      return fs.readFileSync(filePath, "utf8");
-    } else if (
-      mimetype ===
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    ) {
-      console.log("DOCX extraction not implemented yet");
-      return "";
-    } else if (mimetype === "application/msword") {
-      console.log("DOC extraction not implemented yet");
-      return "";
-    } else if (mimetype === "application/rtf") {
-      const content = fs.readFileSync(filePath, "utf8");
-      return content
-        .replace(/\\[a-z]+\*?\d*(\s|$)/g, " ")
-        .replace(/\{[^}]*\}/g, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-    } else {
-      console.log(`Text extraction not supported for file type: ${mimetype}`);
+    if (mimetype === 'application/pdf') {
+      console.log('Processing PDF file...');
+      
+      // Try pdf-parse first (more reliable)
+      try {
+        const pdf = require('pdf-parse');
+        const dataBuffer = fs.readFileSync(filePath);
+        const data = await pdf(dataBuffer);
+        console.log(`pdf-parse extracted ${data.text.length} characters`);
+        
+        if (data.text.length > 100) {
+          return data.text;
+        }
+      } catch (pdfParseError) {
+        console.error("pdf-parse failed, trying pdftotext:", pdfParseError.message);
+      }
+      
+      // Fallback to pdftotext if pdf-parse fails
+      try {
+        const { stdout, stderr } = await execPromise(`pdftotext "${filePath}" -`, { timeout: 30000 });
+        if (stderr) console.warn("pdftotext stderr:", stderr);
+        
+        const extractedText = stdout || "";
+        console.log(`pdftotext extracted ${extractedText.length} characters`);
+        return extractedText;
+      } catch (execError) {
+        console.error("pdftotext also failed:", execError.message);
+        return "";
+      }
+    } 
+    else if (mimetype === 'text/plain') {
+      console.log('Processing text file...');
+      try {
+        const text = fs.readFileSync(filePath, 'utf8');
+        console.log(`Text file extraction successful, got ${text.length} characters`);
+        return text;
+      } catch (readError) {
+        console.error("Text file read error:", readError.message);
+        return "";
+      }
+    }
+    else {
+      console.log(`Text extraction not implemented for: ${mimetype}`);
       return "";
     }
   } catch (error) {
-    console.warn("Text extraction failed:", error.message);
+    console.error("Text extraction failed:", error.message);
     return "";
+  } finally {
+    console.log(`=== Text extraction completed ===\n`);
   }
 };
 
 // Helper function to generate tags from filename
+// Helper function to generate tags from filename
 function generateTagsFromFilename(filename) {
   const tags = [];
   const currentYear = new Date().getFullYear();
+  const lowerFilename = filename.toLowerCase();
 
-  const yearMatch = filename.match(/(20\d{2})/);
-  if (yearMatch) {
-    tags.push(`year-${yearMatch[1]}`);
-  } else {
-    tags.push(`year-${currentYear}`);
-  }
+  // -------- Year Detection --------
+  const yearMatch = lowerFilename.match(/(20\d{2})/);
+  tags.push(`year-${yearMatch ? yearMatch[1] : currentYear}`);
 
+  // -------- Program Area Keywords --------
   const programKeywords = [
-    "education",
-    "health",
-    "research",
-    "policy",
-    "grant",
-    "report",
+    "education","curriculum","school","students","teachers","literacy","training","skills","e-learning","vocational","higher-education",
+    "health","healthcare","public-health","malaria","hiv","vaccine","nutrition","maternal","child","disease","mental-health","clinic","hospital","medicine","pandemic",
+    "research","study","clinical","trial","experiment","innovation","technology","ai","data","science","development","startup","entrepreneurship",
+    "policy","legislation","regulation","governance","law","compliance","strategy","advocacy","program",
+    "grant","funding","investment","budget","finance","philanthropy","awards","scholarships",
+    "environment","climate","energy","sustainability","conservation","water","agriculture","forestry","renewable","green",
+    "community","social","youth","women","empowerment","inclusion","equality","volunteer","ngo","nonprofit"
   ];
+
   programKeywords.forEach((keyword) => {
-    if (filename.toLowerCase().includes(keyword)) {
+    if (lowerFilename.includes(keyword)) {
       tags.push(keyword);
     }
   });
 
-  return tags;
+  // -------- Donor / Organization Keywords --------
+  const donorKeywords = [
+    "gates", "foundation", "who", "worldbank", "unicef", "undp", 
+    "usaid", "dfid", "nih", "wellcome", "rockefeller", "ford"
+  ];
+
+  donorKeywords.forEach((donor) => {
+    if (lowerFilename.includes(donor)) {
+      tags.push(`donor-${donor}`);
+    }
+  });
+
+  // Remove duplicates just in case
+  return [...new Set(tags)];
 }
+
 
 // Routes
 app.post("/upload", upload.single("file"), async (req, res) => {
@@ -283,26 +322,27 @@ app.get("/search/advanced", async (req, res) => {
   try {
     const { q, year, programArea, donor } = req.query;
 
-    let query = {};
+    const query = {};
 
+    // Text search
     if (q && q.trim() !== "") {
       query.extractedText = { $regex: q, $options: "i" };
     }
 
-    if (year) {
-      query.tags = { $in: [`year-${year}`] };
+    // Tags search (year + programArea)
+    const tagFilters = [];
+    if (year) tagFilters.push(`year-${year}`);
+    if (programArea) tagFilters.push(programArea.toLowerCase());
+    if (tagFilters.length > 0) {
+      query.tags = { $all: tagFilters }; // ensures all tags are present
     }
 
-    if (programArea) {
-      query.tags = query.tags || {};
-      query.tags.$in = query.tags.$in || [];
-      query.tags.$in.push(programArea.toLowerCase());
-    }
-
+    // Donor search
     if (donor) {
+      const donorRegex = new RegExp(donor, "i");
       query.$or = [
-        { originalName: new RegExp(donor, "i") },
-        { tags: donor.toLowerCase() },
+        { originalName: donorRegex },
+        { tags: donorRegex }
       ];
     }
 
@@ -614,6 +654,180 @@ app.get("/test-pdftotext", async (req, res) => {
   }
 });
 
+
+// Simple text summarization function
+const generateSummary = (text, maxLength = 500) => {
+  if (!text || text.length === 0) {
+    return "No text available for summarization.";
+  }
+  
+  // Simple algorithm: take first few sentences until we reach maxLength
+  let summary = '';
+  const sentences = text.split(/[.!?]+/);
+  
+  for (const sentence of sentences) {
+    if (summary.length + sentence.length > maxLength) {
+      break;
+    }
+    summary += sentence + '. ';
+  }
+  
+  return summary.trim() || text.substring(0, maxLength) + '...';
+};
+
+// Document summary endpoint
+app.get("/document/:id/summary", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { length } = req.query; // Optional length parameter
+    
+    const document = await Document.findById(id);
+    
+    if (!document) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    
+    if (!document.extractedText || document.extractedText.trim() === '') {
+      return res.status(400).json({ 
+        error: "No text content available for this document",
+        suggestion: "Re-upload the document to extract text" 
+      });
+    }
+    
+    const maxLength = length ? parseInt(length) : 500;
+    const summary = generateSummary(document.extractedText, maxLength);
+    
+    res.json({
+      success: true,
+      document: {
+        id: document._id,
+        filename: document.originalName,
+        uploadDate: document.uploadedAt,
+        fileType: document.mimetype
+      },
+      summary: summary,
+      statistics: {
+        originalLength: document.extractedText.length,
+        summaryLength: summary.length,
+        compressionRatio: Math.round((summary.length / document.extractedText.length) * 100)
+      }
+    });
+    
+  } catch (error) {
+    console.error("Summary error:", error);
+    res.status(500).json({ 
+      error: "Failed to generate summary",
+      message: error.message 
+    });
+  }
+});
+
+// Advanced summary with options
+app.get("/document/:id/summary/advanced", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      length = 500, 
+      type = 'intro', // 'intro', 'keypoints', 'overview'
+      includeStats = true 
+    } = req.query;
+    
+    const document = await Document.findById(id);
+    
+    if (!document || !document.extractedText) {
+      return res.status(404).json({ error: "Document or text not found" });
+    }
+    
+    let summary;
+    const text = document.extractedText;
+    
+    switch (type) {
+      case 'keypoints':
+        // Extract what looks like key points (lines with bullets, numbers, etc.)
+        const keyPoints = text.split('\n')
+          .filter(line => 
+            line.match(/^[•\-*\d+\.]/) || 
+            line.match(/\b(important|key|summary|conclusion)\b/i) ||
+            line.length > 50 && line.length < 200
+          )
+          .slice(0, 5);
+        summary = keyPoints.join('\n') || generateSummary(text, length);
+        break;
+        
+      case 'overview':
+        // Try to get beginning, middle, and end snippets
+        const third = Math.floor(text.length / 3);
+        summary = [
+          text.substring(0, Math.min(200, third)),
+          text.substring(third, third + 200),
+          text.substring(text.length - 200)
+        ].join('...\n\n...');
+        break;
+        
+      default: // 'intro'
+        summary = generateSummary(text, length);
+    }
+    
+    const response = {
+      success: true,
+      document: {
+        id: document._id,
+        filename: document.originalName,
+        tags: document.tags
+      },
+      summary: summary,
+      options: {
+        type: type,
+        requestedLength: length
+      }
+    };
+    
+    if (includeStats) {
+      response.statistics = {
+        originalLength: text.length,
+        summaryLength: summary.length,
+        compressionRatio: Math.round((summary.length / text.length) * 100)
+      };
+    }
+    
+    res.json(response);
+    
+  } catch (error) {
+    console.error("Advanced summary error:", error);
+    res.status(500).json({ error: "Failed to generate advanced summary" });
+  }
+});
+
+// Get summaries for multiple documents
+app.get("/summaries", async (req, res) => {
+  try {
+    const { ids, length = 300 } = req.query;
+    
+    if (!ids) {
+      return res.status(400).json({ error: "Document IDs required" });
+    }
+    
+    const idArray = Array.isArray(ids) ? ids : ids.split(',');
+    const documents = await Document.find({ _id: { $in: idArray } });
+    
+    const summaries = documents.map(doc => ({
+      id: doc._id,
+      filename: doc.originalName,
+      summary: generateSummary(doc.extractedText || '', length),
+      hasContent: !!doc.extractedText && doc.extractedText.length > 0
+    }));
+    
+    res.json({
+      success: true,
+      count: summaries.length,
+      summaries: summaries
+    });
+    
+  } catch (error) {
+    console.error("Bulk summaries error:", error);
+    res.status(500).json({ error: "Failed to generate bulk summaries" });
+  }
+});
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

@@ -1,20 +1,22 @@
-// eureka-frontend/src/components/UploadComponent.jsx
+// components/UploadComponent.jsx
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import "./UploadComponent.css";
-import API from "../api";
-
 
 const UploadComponent = () => {
   const [file, setFile] = useState(null);
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const API_BASE = import.meta.env.VITE_API_URL;
+  const navigate = useNavigate();
+
   // Fetch uploaded files
   const fetchFiles = async () => {
     try {
-      const res = await axios.get("https://eureka-8173.onrender.com/files");
+      const res = await axios.get(`${API_BASE}/files`);
       setFiles(res.data);
     } catch (err) {
       console.error("Error fetching files:", err);
@@ -26,7 +28,6 @@ const UploadComponent = () => {
     fetchFiles();
   }, []);
 
-  // Handle file upload
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) {
@@ -35,12 +36,11 @@ const UploadComponent = () => {
     }
 
     setLoading(true);
-
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      await axios.post("https://eureka-8173.onrender.com/upload", formData, {
+      await axios.post(`${API_BASE}/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFile(null);
@@ -48,13 +48,12 @@ const UploadComponent = () => {
       fetchFiles();
     } catch (err) {
       console.error("Upload error:", err);
-      toast.error("Upload failed: " + err.message);
+      toast.error("Upload failed: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle file selection
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
@@ -81,17 +80,16 @@ const UploadComponent = () => {
     toast.success(`Selected: ${selectedFile.name}`);
   };
 
-  // Handle file deletion
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this file?")) return;
 
     try {
-      await axios.delete(`https://eureka-8173.onrender.com/files/${id}`);
+      await axios.delete(`${API_BASE}/files/${id}`);
       toast.success("File deleted successfully!");
       fetchFiles();
     } catch (err) {
       console.error("Delete error:", err);
-      toast.error("Failed to delete file: " + err.message);
+      toast.error("Failed to delete file: " + (err.response?.data?.error || err.message));
     }
   };
 
@@ -123,6 +121,16 @@ const UploadComponent = () => {
         </button>
       </form>
 
+      {/* Navigation Buttons for Search */}
+      <div className="search-nav-buttons">
+        <button onClick={() => navigate("/search")} className="nav-button">
+          🔍 Basic Search
+        </button>
+        <button onClick={() => navigate("/advanced")} className="nav-button">
+          📊 Advanced Search
+        </button>
+      </div>
+
       <div className="uploaded-files">
         <h3>Uploaded Files</h3>
         {files.length === 0 ? (
@@ -132,7 +140,7 @@ const UploadComponent = () => {
             {files.map((f) => (
               <li key={f._id} className="file-item">
                 <a
-                  href={`https://eureka-8173.onrender.com/${f.filename}`}
+                  href={`${API_BASE}/${f.filename}`}
                   target="_blank"
                   rel="noreferrer"
                   className="file-link"
