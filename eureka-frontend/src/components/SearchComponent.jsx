@@ -1,14 +1,15 @@
 // components/SearchComponent.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { documentAPI } from "../utils/api.js";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./SearchComponent.css";
 
-const SearchComponent = () => {
+const SearchComponent = ({ onDocumentSelect }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState("");
 
   const API_BASE = import.meta.env.VITE_API_URL;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,7 +22,6 @@ const SearchComponent = () => {
       setQuery(q);
       handleSearch(null, q);
     }
-    // eslint-disable-next-line
   }, []);
 
   const handleSearch = async (e, prefilledQuery = null) => {
@@ -31,24 +31,37 @@ const SearchComponent = () => {
 
     setSearching(true);
     setHasSearched(true);
+    setError("");
 
     try {
       setSearchParams({ q: searchQuery });
 
-      const response = await axios.get(`${API_BASE}/search`, {
-        params: { q: searchQuery },
-      });
+      // Try the search endpoint
+      const response = await documentAPI.search(searchQuery);
       setResults(response.data);
     } catch (error) {
       console.error("Search error:", error);
-      if (error.response?.data?.error?.includes("text index")) {
-        alert(
-          "Search index is still being created. Please wait a moment and try again."
-        );
+      
+      // If search endpoint fails, try to get all documents and filter client-side
+      if (error.response?.status === 404) {
+        try {
+          const allResponse = await documentAPI.getAll();
+          const allDocuments = allResponse.data;
+          
+          // Simple client-side search
+          const filteredResults = allDocuments.filter(doc => 
+            doc.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (doc.extractedText && doc.extractedText.toLowerCase().includes(searchQuery.toLowerCase()))
+          );
+          
+          setResults(filteredResults);
+          setError("Using client-side search as server search is unavailable");
+        } catch (fallbackError) {
+          setError("Search failed. Please try again later.");
+          console.error("Fallback search error:", fallbackError);
+        }
       } else {
-        alert(
-          "Search failed: " + (error.response?.data?.error || error.message)
-        );
+        setError("Search failed: " + (error.response?.data?.error || error.message));
       }
     } finally {
       setSearching(false);
@@ -62,8 +75,8 @@ const SearchComponent = () => {
       .toLowerCase()
       .split(" ")
       .filter((term) => term.length > 2);
+    
     let highlighted = text;
-
     terms.forEach((term) => {
       const regex = new RegExp(`(${term})`, "gi");
       highlighted = highlighted.replace(regex, "<mark>$1</mark>");
@@ -77,7 +90,14 @@ const SearchComponent = () => {
     setResults([]);
     setHasSearched(false);
     setSearchParams({});
-    navigate("/upload");
+    setError("");
+  };
+
+  const handleDocumentClick = (document) => {
+    if (onDocumentSelect) {
+      onDocumentSelect(document);
+    }
+    navigate(`/document/${document._id}`);
   };
 
   return (
@@ -95,10 +115,20 @@ const SearchComponent = () => {
         <button type="submit" disabled={searching} className="search-button">
           {searching ? "Searching..." : "Search"}
         </button>
-        <button type="button" onClick={handleReset} className="reset-button">
-          🔙 Reset / Clear
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard?tab=upload")}
+          className="reset-button"
+        >
+          🔙 Back to Upload
         </button>
       </form>
+
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+        </div>
+      )}
 
       <div className="search-results">
         {hasSearched && (
@@ -108,21 +138,24 @@ const SearchComponent = () => {
               <div className="no-results">
                 <p>No documents found for "{query}".</p>
                 <p>
-                  Try different keywords or check if documents have been
-                  uploaded.
+                  Try different keywords or check if documents have been uploaded.
                 </p>
               </div>
             ) : (
               <ul className="results-list">
                 {results.map((doc) => (
-                  <li key={doc._id} className="result-item">
+                  <li
+                    key={doc._id}
+                    className="result-item"
+                    onClick={() => handleDocumentClick(doc)}
+                    style={{ cursor: "pointer" }}
+                  >
                     <h4>{doc.originalName}</h4>
                     <div className="document-meta">
                       <span>Size: {(doc.size / 1024).toFixed(2)} KB</span>
                       <span>Type: {doc.mimetype}</span>
                       <span>
-                        Uploaded:{" "}
-                        {new Date(doc.uploadedAt).toLocaleDateString()}
+                        Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
                       </span>
                     </div>
 
@@ -147,10 +180,11 @@ const SearchComponent = () => {
                     )}
 
                     <a
-                      href={`${API_BASE}/${doc.filename}`}
+                      href={`${API_BASE}/uploads/${doc.filename}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-link"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       📄 View Full Document
                     </a>

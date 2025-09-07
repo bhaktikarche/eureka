@@ -1,0 +1,137 @@
+/* TextHighlighter.css */
+.text-highlighter-container {
+  position: relative;
+  width: 100%;
+}
+
+.highlight-instructions {
+  background-color: #f8f9fa;
+  border-left: 4px solid #4e73df;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #5a6c7d;
+}
+
+.highlight-instructions p {
+  margin: 0;
+}
+
+.page-text-content {
+  line-height: 1.8;
+  font-size: 16px;
+  text-align: justify;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e3e6f0;
+  min-height: 400px;
+  cursor: text;
+  user-select: text;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.text-content-plain, .text-content-highlighted {
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.text-highlight {
+  background-color: #ffeb3b;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: background-color 0.2s ease;
+}
+
+.text-highlight:hover {
+  background-color: #ffd54f;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
+}
+
+.annotation-form {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 15px;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.annotation-form-content h4 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.annotation-form-content p {
+  margin: 0 0 10px 0;
+  color: #5a6c7d;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.annotation-form-content textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin: 10px 0;
+  font-family: inherit;
+  resize: vertical;
+  font-size: 14px;
+}
+
+.annotation-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.annotation-buttons button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.annotation-buttons button:first-child {
+  background: #4e73df;
+  color: white;
+}
+
+.annotation-buttons button:first-child:hover {
+  background: #3a56c4;
+}
+
+.annotation-buttons button:last-child {
+  background: #6c757d;
+  color: white;
+}
+
+.annotation-buttons button:last-child:hover {
+  background: #5a6268;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .annotation-form {
+    min-width: 250px;
+    max-width: 300px;
+  }
+  
+  .page-text-content {
+    padding: 15px;
+    font-size: 14px;
+  }
+  
+  .highlight-instructions {
+    font-size: 13px;
+  }
+}

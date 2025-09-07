@@ -1,0 +1,159 @@
+// routes/chat.js
+const express = require('express');
+const router = express.Router();
+const Document = require('../models/Document');
+const natural = require('natural');
+const tokenizer = new natural.WordTokenizer();
+
+// Process user queries
+const processQuery = async (query) => {
+  const tokens = tokenizer.tokenize(query.toLowerCase());
+  
+  // Detect query intent
+  const intents = {
+    search: ['find', 'search', 'look for', 'where is', 'locate', 'show me'],
+    summarize: ['summarize', 'summary', 'brief', 'overview', 'sum up'],
+    retrieve: ['get', 'retrieve', 'open', 'view', 'show'],
+    page: ['page', 'pg', 'on page', 'at page'],
+    tag: ['tag', 'category', 'categorize', 'organize', 'group']
+  };
+  
+  let detectedIntent = 'general';
+  let detectedParams = {};
+  
+  // Check for intents
+  for (const [intent, keywords] of Object.entries(intents)) {
+    if (keywords.some(keyword => query.toLowerCase().includes(keyword))) {
+      detectedIntent = intent;
+      break;
+    }
+  }
+  
+  // Extract document names or specific references
+  const documentPattern = /(document|file|pdf|report)\s+["']?([^"',.!?]+)["']?/i;
+  const documentMatch = query.match(documentPattern);
+  if (documentMatch) {
+    detectedParams.document = documentMatch[2].trim();
+  }
+  
+  // Extract page numbers
+  const pagePattern = /(page|pg)\s+(\d+)/i;
+  const pageMatch = query.match(pagePattern);
+  if (pageMatch) {
+    detectedParams.page = parseInt(pageMatch[2]);
+  }
+  
+  return {
+    intent: detectedIntent,
+    parameters: detectedParams,
+    originalQuery: query
+  };
+};
+
+// Generate AI response based on query
+const generateResponse = async (query, analysis, history = []) => {
+  const { intent, parameters } = analysis;
+  
+  try {
+    switch (intent) {
+      case 'search':
+        // Search for documents
+        const searchResults = await Document.find({
+          $or: [
+            { originalName: { $regex: parameters.document || query, $options: 'i' } },
+            { extractedText: { $regex: parameters.document || query, $options: 'i' } },
+            { tags: { $regex: parameters.document || query, $options: 'i' } }
+          ]
+        }).limit(5);
+        
+        if (searchResults.length === 0) {
+          return "I couldn't find any documents matching your search. Try different keywords or upload the document first.";
+        }
+        
+        let response = `I found ${searchResults.length} document(s) related to your search:\n\n`;
+        searchResults.forEach((doc, index) => {
+          response += `${index + 1}. **${doc.originalName}**\n`;
+          response += `   - Uploaded: ${new Date(doc.uploadedAt).toLocaleDateString()}\n`;
+          response += `   - Type: ${doc.mimetype}\n`;
+          if (doc.tags && doc.tags.length > 0) {
+            response += `   - Tags: ${doc.tags.join(', ')}\n`;
+          }
+          response += `   - [View Document](/document/${doc._id})\n\n`;
+        });
+        
+        return response;
+        
+      case 'summarize':
+        // Find document to summarize
+        const docToSummarize = await Document.findOne({
+          $or: [
+            { originalName: { $regex: parameters.document || query, $options: 'i' } },
+            { extractedText: { $regex: parameters.document || query, $options: 'i' } }
+          ]
+        });
+        
+        if (!docToSummarize) {
+          return "I couldn't find a document to summarize. Please specify which document you'd like me to summarize.";
+        }
+        
+        if (!docToSummarize.extractedText) {
+          return `The document "${docToSummarize.originalName}" doesn't have extractable text content.`;
+        }
+        
+        // Simple summarization (you can enhance this later)
+        const text = docToSummarize.extractedText;
+        const sentences = text.split(/[.!?]+/);
+        const summary = sentences.slice(0, 3).join('. ') + '.';
+        
+        return `Here's a summary of **${docToSummarize.originalName}**:\n\n${summary}\n\n[View full document](/document/${docToSummarize._id})`;
+        
+      case 'retrieve':
+        // Retrieve specific document
+        const retrievedDoc = await Document.findOne({
+          $or: [
+            { originalName: { $regex: parameters.document || query, $options: 'i' } },
+            { extractedText: { $regex: parameters.document || query, $options: 'i' } }
+          ]
+        });
+        
+        if (!retrievedDoc) {
+          return "I couldn't find that document. Please check the name or upload it first.";
+        }
+        
+        return `I found the document **${retrievedDoc.originalName}**. You can [view it here](/document/${retrievedDoc._id}) or ask me to summarize it.`;
+        
+      default:
+        return "I'm your AI librarian assistant! I can help you:\n\n- Search for documents 📄\n- Summarize content 📝\n- Retrieve specific files 🔍\n- Answer questions about your documents 💬\n\nTry asking me something like:\n- \"Find my annual report\"\n- \"Summarize the research paper\"\n- \"Show me documents about healthcare\"";
+    }
+  } catch (error) {
+    console.error('Response generation error:', error);
+    return "I encountered an error processing your request. Please try again or rephrase your question.";
+  }
+};
+
+// Chat endpoint
+router.post('/', async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Process the query to understand user intent
+    const queryAnalysis = await processQuery(message);
+    
+    // Generate appropriate response based on query type
+    const response = await generateResponse(message, queryAnalysis, history);
+    
+    res.json({ response });
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ 
+      error: 'Failed to process your request',
+      details: error.message 
+    });
+  }
+});
+
+module.exports = router;
