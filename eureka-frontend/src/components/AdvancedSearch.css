@@ -7,6 +7,8 @@
   margin: 0 auto;
   font-family: "Poppins", "Inter", "Segoe UI", sans-serif;
   color: #2d2d2d;
+  word-wrap: break-word;      /* Allow long words to wrap */
+  overflow-wrap: break-word;  /* Fallback for older browsers */
 }
 
 /* Controls (Analytics + Dashboard buttons) */
@@ -48,6 +50,8 @@
   box-shadow: 0 10px 35px rgba(0, 0, 0, 0.08);
   border: 1px solid #ede9fe;
   animation: fadeIn 0.5s ease-out;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .search-fields {
@@ -76,6 +80,8 @@
   font-size: 0.95rem;
   transition: all 0.3s ease;
   background: #fafafa;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .search-input:focus,
@@ -140,6 +146,8 @@
   margin-bottom: 2.5rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.07);
   border: 1px solid #ede9fe;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .analytics-grid {
@@ -155,6 +163,8 @@
   border-radius: 14px;
   border-left: 4px solid #9333ea;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .analytics-card:hover {
@@ -175,7 +185,7 @@
   margin-bottom: 1.5rem;
   padding-bottom: 0.8rem;
   border-bottom: 2px solid #e2e8f0;
-  font-size: 1.5rem;
+font-size: 1.3rem;
   font-weight: 700;
 }
 
@@ -194,11 +204,8 @@
   border-left: 4px solid #9333ea;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   animation: fadeIn 0.5s ease-out;
-}
-
-.result-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(147, 51, 234, 0.15);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .result-item h4 {
@@ -206,6 +213,7 @@
   color: #2d2d2d;
   font-size: 1.2rem;
   font-weight: 600;
+  word-break: break-word;
 }
 
 .document-meta {
@@ -224,6 +232,8 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Text preview */
@@ -236,6 +246,8 @@
   font-size: 0.95rem;
   line-height: 1.6;
   color: #4b5563;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .text-preview mark {
@@ -261,6 +273,8 @@
   font-size: 0.85rem;
   font-weight: 500;
   transition: all 0.3s ease;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .tag:hover {
@@ -282,6 +296,8 @@
   font-size: 0.9rem;
   transition: all 0.3s ease;
   margin-top: 0.5rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .view-link:hover {
@@ -297,6 +313,8 @@
   background: #faf5ff;
   border-radius: 16px;
   border: 2px dashed #e9d5ff;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Animation */
